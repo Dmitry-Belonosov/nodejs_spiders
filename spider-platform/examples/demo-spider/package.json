@@ -1,0 +1,8 @@
+{
+  "name": "demo-spider",
+  "private": true,
+  "description": "Fake spider used to verify the platform pipeline end to end",
+  "scripts": {
+    "start": "node run.js"
+  }
+}

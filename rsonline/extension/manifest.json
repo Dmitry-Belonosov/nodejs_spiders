@@ -1,0 +1,35 @@
+{
+   "background": {
+      "scripts": ["credentials.js", "background.js"]
+   },
+    "content_scripts": [ {
+      "js": [ "auto_detail.js" ],
+      "matches": [ "https://*.rs-online.com/*" ],
+      "run_at": "document_idle"	
+    }
+   ],
+   "browser_action": {
+      "default_icon": "logo.png"
+   },
+   "description": "uk.rs-online.com scraper",
+   "icons": {
+      "128": "logo.png"
+   },
+   "manifest_version": 2,
+   "name": "rs-online.com",
+   "permissions":  [ 
+"cookies",
+"tabs",
+"activeTab",
+"webNavigation",
+"*://*.*/*",
+"storage",
+"<all_urls>",
+"browsingData",
+"cookies",
+"proxy",
+"webRequest",
+"webRequestBlocking"
+	],
+   "version": "1.0.0"
+}

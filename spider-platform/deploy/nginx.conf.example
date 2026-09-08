@@ -1,0 +1,50 @@
+# Reverse proxy for the Spider Platform.
+#
+# Copy to /etc/nginx/sites-available/spider-platform, adjust server_name and
+# certificate paths, then:
+#   ln -s /etc/nginx/sites-available/spider-platform /etc/nginx/sites-enabled/
+#   nginx -t && systemctl reload nginx
+#
+# Obtain a certificate with: certbot --nginx -d spiders.example.com
+
+server {
+    listen 80;
+    server_name spiders.example.com;
+
+    # Everything except the ACME challenge goes to HTTPS.
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name spiders.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/spiders.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/spiders.example.com/privkey.pem;
+
+    # Spider ZIPs can be large.
+    client_max_body_size 300m;
+
+    # Optional extra layer: restrict to the office/VPN address range.
+    # allow 203.0.113.0/24;
+    # deny all;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Live log streaming uses server-sent events: no buffering, no timeout.
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 24h;
+    }
+}

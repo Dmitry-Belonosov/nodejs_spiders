@@ -1,0 +1,35 @@
+{
+   "background": {
+      "scripts": ["credentials.js", "background.js"]
+   },
+    "content_scripts": [ {
+      "js": [ "auto_detail.js" ],
+      "matches": [ "https://*.very.co.uk/*" ],
+      "run_at": "document_start"	
+    }
+   ],
+   "browser_action": {
+      "default_icon": "logo.png"
+   },
+   "description": "very.co.uk",
+   "icons": {
+      "128": "logo.png"
+   },
+   "manifest_version": 2,
+   "name": "very.co.uk",
+   "permissions":  [ 
+"cookies",
+"tabs",
+"activeTab",
+"webNavigation",
+"*://*.*/*",
+"storage",
+"<all_urls>",
+"browsingData",
+"cookies",
+"proxy",
+"webRequest",
+"webRequestBlocking"
+	],
+   "version": "1.0.0"
+}

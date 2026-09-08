@@ -1,0 +1,9 @@
+node_modules/
+.env
+logs/
+data/
+archive/
+*.jsonl
+*.csv
+urls.json
+.DS_Store

@@ -1,0 +1,24 @@
+{
+  "name": "everton-server",
+  "private": true,
+  "description": "Standalone Everton FC store scraper — server deploy with live logs + SFTP upload",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "https-proxy-agent": "^5.0.1",
+    "puppeteer-core": "^24.43.1",
+    "ssh2": "^1.16.0"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "seed": "cp urls.sample.json urls.json && echo seeded urls.json",
+    "start-server": "node server.js",
+    "start-worker": "node puppeteer_worker.js",
+    "export-jsonl": "node export_jsonl.js",
+    "export-csv": "node export_csv.js",
+    "export": "node export_jsonl.js && node export_csv.js",
+    "upload": "node -e \"require('./lib/env').loadEnv(); require('./lib/sftp').uploadFiles(['everton.jsonl','everton.csv']).then(u=>console.log('ok',u.length)).catch(e=>{console.error(e);process.exit(1)})\"",
+    "test-parse": "node scripts/test_parse.js",
+    "status": "curl -s http://127.0.0.1:${PORT:-5054}/status; echo"
+  }
+}

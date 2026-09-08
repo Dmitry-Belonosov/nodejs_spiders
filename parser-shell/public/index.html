@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Parser Shell</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Parser Shell</h1>
+      <p id="topMeta">Starting parsers the same way Terminal does.</p>
+    </div>
+    <div class="top-actions">
+      <button id="btnSftp">Test SFTP</button>
+      <button id="btnRefresh">Refresh</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="cards"></section>
+    <p class="empty" id="empty" hidden>No parsers with an <code>npm start</code> script were found in this folder.</p>
+
+    <section class="runs">
+      <div class="runs-head">
+        <h2>Recent runs</h2>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Started</th>
+            <th>Parser</th>
+            <th>Network</th>
+            <th>Layout</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>CSV</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="runRows"></tbody>
+      </table>
+      <p class="empty" id="runEmpty" hidden>No runs yet.</p>
+    </section>
+  </main>
+
+  <div class="overlay" id="logModal" hidden>
+    <div class="sheet">
+      <div class="sheet-head">
+        <div>
+          <h3 id="logTitle">Log</h3>
+          <p class="muted" id="logSub"></p>
+        </div>
+        <span class="spacer"></span>
+        <button id="btnRetryUpload" hidden>Retry SFTP</button>
+        <button data-close="logModal">Close</button>
+      </div>
+      <pre class="log" id="logBody"></pre>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

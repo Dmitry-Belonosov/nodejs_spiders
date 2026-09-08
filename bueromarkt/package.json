@@ -1,0 +1,28 @@
+{
+  "name": "bueromarkt-scraper",
+  "private": true,
+  "description": "Node scraper for bueromarkt-ag.de (Puppeteer + ProxyRack, Autodoc-style)",
+  "dependencies": {
+    "@xenova/transformers": "^2.17.2",
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "https-proxy-agent": "^5.0.1",
+    "puppeteer-core": "^24.43.1"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "seed-sample": "cp urls.sample.json urls.json && echo 'using sample product URLs'",
+    "seed-sitemap": "node scripts/fetch_sitemap_urls.js",
+    "seed-sitemap-pp": "USE_PROXY=0 node scripts/seed_sitemap_pp.js",
+    "start-server": "node server.js",
+    "start-pp": "USE_PROXY=1 HEADLESS=0 HIDE_CHROME=1 THREADS=4 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-direct": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=1 THREADS=10 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-direct-2": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=1 THREADS=10 BLOCK_TYPES= DELAY_MS=400 PROFILE=/tmp/bueromarkt-pp-profile-2 node puppeteer_worker.js",
+    "start-pp-visible": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=0 THREADS=10 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "solve-captcha": "node scripts/solve_hcaptcha_now.js",
+    "start-pp-headless": "USE_PROXY=0 HEADLESS=1 THREADS=4 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-fast": "HEADLESS=1 THREADS=4 PAGE_CONCURRENCY=2 BLOCK_TYPES=image,font DELAY_MS=200 node puppeteer_worker.js",
+    "export-jsonl": "node export_jsonl.js",
+    "export-csv": "node export_csv.js"
+  }
+}

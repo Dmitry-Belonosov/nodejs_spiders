@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spider Platform</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <h1>Spider Platform</h1>
+    <span class="meta" id="topMeta"></span>
+    <span class="spacer"></span>
+    <button id="btnAddSpider" class="primary">+ Add spider</button>
+    <button id="btnSettings">Settings</button>
+    <button id="btnLogout">Log out</button>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="card-head">
+        <h2>Spiders</h2>
+        <span class="spacer"></span>
+        <span class="meta" id="spiderCount"></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Schedule</th>
+            <th>Next run</th>
+            <th>Last run</th>
+            <th>SFTP</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="spiderRows"></tbody>
+      </table>
+      <div class="empty" id="spiderEmpty" hidden>
+        No spiders yet. Upload a ZIP of a spider project, or link a folder that already exists on this machine.
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Recent runs</h2>
+        <span class="spacer"></span>
+        <select id="runFilter" style="width:auto">
+          <option value="">All spiders</option>
+        </select>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Started</th>
+            <th>Spider</th>
+            <th>Trigger</th>
+            <th>Status</th>
+            <th>Duration</th>
+            <th>Exit</th>
+            <th>Files</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="runRows"></tbody>
+      </table>
+      <div class="empty" id="runEmpty" hidden>No runs recorded yet.</div>
+    </section>
+  </main>
+
+  <!-- Add spider -->
+  <div class="overlay" id="uploadModal" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Add spider</h3>
+        <span class="spacer"></span>
+        <button data-close="uploadModal">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="field">
+          <label for="upName">Name</label>
+          <input type="text" id="upName" placeholder="Everton" />
+        </div>
+        <div class="field">
+          <label>Spider code</label>
+          <div class="actions">
+            <button id="btnPickFolder" class="primary">Choose folder…</button>
+            <button id="btnPickZip">Choose ZIP…</button>
+          </div>
+          <input type="file" id="upFolder" webkitdirectory directory multiple hidden />
+          <input type="file" id="upFile" accept=".zip" hidden />
+          <div class="hint" id="upPicked">Nothing chosen yet.</div>
+          <div class="hint">
+            The project needs a <code>package.json</code> with a <code>start</code> script that finishes when the
+            crawl is done. Only code and config are sent: <code>node_modules</code>, <code>data/</code>,
+            <code>logs/</code> and <code>archive/</code> are skipped, and dependencies are installed here.
+          </div>
+          <div class="hint">
+            A folder with a large <code>data/</code> can take a while to open in the browser — for those, a ZIP of
+            the code or the folder-path option below is quicker.
+          </div>
+        </div>
+        <details>
+          <summary class="muted" style="cursor:pointer;font-size:12px">Add a folder already on this machine instead</summary>
+          <div class="field" style="margin-top:12px">
+            <label for="linkDir">Absolute path</label>
+            <input type="text" id="linkDir" placeholder="/opt/spiders/everton-server" />
+            <div class="hint">The spider runs in place and the folder is never deleted.</div>
+          </div>
+          <button id="btnDoLink">Add folder</button>
+        </details>
+        <div id="upResult" class="hint" style="margin-top:14px"></div>
+      </div>
+      <div class="modal-foot">
+        <button data-close="uploadModal">Cancel</button>
+        <button class="primary" id="btnDoUpload">Add spider</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Spider editor -->
+  <div class="overlay" id="spiderModal" hidden>
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="spiderModalTitle">Spider</h3>
+        <span class="spacer"></span>
+        <button data-close="spiderModal">Close</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="general">General</button>
+        <button class="tab" data-tab="schedule">Schedule</button>
+        <button class="tab" data-tab="env">Environment</button>
+        <button class="tab" data-tab="sftp">SFTP</button>
+        <button class="tab" data-tab="code">Code</button>
+      </div>
+      <div class="modal-body">
+        <div class="tab-panel" data-panel="general">
+          <div class="field">
+            <label for="spName">Name</label>
+            <input type="text" id="spName" />
+          </div>
+          <div class="field">
+            <label class="checkbox"><input type="checkbox" id="spEnabled" /> Spider enabled</label>
+            <div class="hint">Disabling stops scheduled runs; "Run now" still works.</div>
+          </div>
+          <div class="field">
+            <label>Folder</label>
+            <div class="mono muted" id="spDir"></div>
+          </div>
+          <details>
+            <summary class="muted" style="cursor:pointer;font-size:12px">Advanced</summary>
+            <div class="grid2" style="margin-top:14px">
+              <div class="field">
+                <label for="spCommand">Start command</label>
+                <input type="text" id="spCommand" placeholder="npm start" />
+              </div>
+              <div class="field">
+                <label for="spTimeout">Timeout in minutes (blank = default)</label>
+                <input type="number" id="spTimeout" min="1" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="spOutputs">Files to keep after a run (one pattern per line)</label>
+              <textarea id="spOutputs" rows="2"></textarea>
+            </div>
+          </details>
+        </div>
+
+        <div class="tab-panel" data-panel="schedule" hidden>
+          <div class="field">
+            <label class="checkbox"><input type="checkbox" id="spSchedEnabled" /> Run on a schedule</label>
+          </div>
+          <div class="field">
+            <label for="spRepeat">Repeat</label>
+            <select id="spRepeat" style="width:230px">
+              <option value="daily">Every day</option>
+              <option value="weekly">On selected days of the week</option>
+              <option value="monthly">Every month</option>
+              <option value="once">Once</option>
+            </select>
+          </div>
+          <div class="field" id="spDaysField" hidden>
+            <label>Days of the week</label>
+            <div class="days" id="spDays">
+              <label class="checkbox"><input type="checkbox" data-day="1" />Mon</label>
+              <label class="checkbox"><input type="checkbox" data-day="2" />Tue</label>
+              <label class="checkbox"><input type="checkbox" data-day="3" />Wed</label>
+              <label class="checkbox"><input type="checkbox" data-day="4" />Thu</label>
+              <label class="checkbox"><input type="checkbox" data-day="5" />Fri</label>
+              <label class="checkbox"><input type="checkbox" data-day="6" />Sat</label>
+              <label class="checkbox"><input type="checkbox" data-day="0" />Sun</label>
+            </div>
+            <div class="hint">
+              Pick Mon-Fri for weekdays only, or any combination.
+              <button type="button" class="linklike" id="spDaysWeekdays">weekdays</button> ·
+              <button type="button" class="linklike" id="spDaysAll">all</button> ·
+              <button type="button" class="linklike" id="spDaysNone">none</button>
+            </div>
+          </div>
+          <div class="field" id="spDateField">
+            <label for="spDate">Date</label>
+            <input type="date" id="spDate" style="width:190px" />
+            <div class="hint" id="spDateHint">The day of the month this repeats on.</div>
+          </div>
+          <div class="field">
+            <label for="spTime">Start time</label>
+            <input type="time" id="spTime" style="width:190px" />
+          </div>
+          <div id="scheduleSummary" class="hint"></div>
+        </div>
+
+        <div class="tab-panel" data-panel="env" hidden>
+          <div class="field">
+            <label for="spEnv">Settings for this spider (KEY=VALUE, one per line)</label>
+            <textarea id="spEnv" rows="10" placeholder="THREADS=4&#10;USE_PROXY=1"></textarea>
+            <div class="hint">
+              Only what differs from the platform defaults. Leave empty unless a spider needs something special.
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" data-panel="sftp" hidden>
+          <div class="field">
+            <label class="checkbox"><input type="checkbox" id="spSftpEnabled" /> Send the CSV after a successful run</label>
+          </div>
+          <div class="field">
+            <label for="spRemoteDir">Destination folder on the SFTP server</label>
+            <input type="text" id="spRemoteDir" placeholder="Kitbag/Everton" />
+            <div class="hint">The server, user and password come from the platform configuration.</div>
+          </div>
+          <button id="btnTestSftp" class="small">Test connection</button>
+          <span id="sftpResult" class="hint"></span>
+        </div>
+
+        <div class="tab-panel" data-panel="code" hidden>
+          <div class="field">
+            <label>Replace the code with a newer version</label>
+            <div class="actions">
+              <button id="btnPickCodeFolder">Choose folder…</button>
+              <button id="btnPickCodeZip">Choose ZIP…</button>
+            </div>
+            <input type="file" id="spFolder" webkitdirectory directory multiple hidden />
+            <input type="file" id="spArchive" accept=".zip" hidden />
+            <div class="hint" id="spPicked">Nothing chosen yet.</div>
+            <div class="hint">
+              <code>.env</code>, <code>urls.json</code> and <code>data/</code> are carried over from the previous
+              version. The old copy is kept under <code>data/backups/</code>.
+            </div>
+          </div>
+          <button id="btnReplaceCode">Upload new version</button>
+          <span id="replaceResult" class="hint"></span>
+          <hr style="border:none;border-top:1px solid var(--border);margin:22px 0" />
+          <button class="danger" id="btnDeleteSpider">Delete spider</button>
+          <div class="hint">Uploaded spiders are removed with their files; linked folders are only unregistered.</div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button data-close="spiderModal">Cancel</button>
+        <button class="primary" id="btnSaveSpider">Save changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run log -->
+  <div class="overlay" id="logModal" hidden>
+    <div class="modal wide">
+      <div class="modal-head">
+        <h3 id="logTitle">Run log</h3>
+        <span class="spacer"></span>
+        <label class="checkbox"><input type="checkbox" id="logFollow" checked /> Follow</label>
+        <button data-close="logModal">Close</button>
+      </div>
+      <div class="modal-body">
+        <div id="logStatus" class="hint" style="margin-bottom:10px"></div>
+        <div class="log" id="logView"></div>
+        <div id="logArtifacts" class="file-list" style="margin-top:14px"></div>
+      </div>
+      <div class="modal-foot">
+        <button id="btnCancelRun" class="danger">Cancel run</button>
+        <button id="btnReupload">Retry SFTP upload</button>
+        <button data-close="logModal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="overlay" id="settingsModal" hidden>
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Platform settings</h3>
+        <span class="spacer"></span>
+        <button data-close="settingsModal">Close</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid2">
+          <div class="field">
+            <label for="setTimezone">Timezone for all schedules</label>
+            <select id="setTimezone">
+              <option value="Europe/London">United Kingdom (Europe/London)</option>
+              <option value="Europe/Kiev">Ukraine (Europe/Kiev)</option>
+              <option value="Europe/Berlin">Germany (Europe/Berlin)</option>
+              <option value="UTC">UTC</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="setConcurrency">Spiders allowed to run at the same time</label>
+            <input type="number" id="setConcurrency" min="1" />
+          </div>
+        </div>
+        <div class="hint" id="setChrome"></div>
+      </div>
+      <div class="modal-foot">
+        <button data-close="settingsModal">Cancel</button>
+        <button class="primary" id="btnSaveSettings">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-wrap" id="toasts"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

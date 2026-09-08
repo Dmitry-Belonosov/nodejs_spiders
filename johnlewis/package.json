@@ -1,0 +1,21 @@
+{
+  "name": "johnlewis-scraper",
+  "private": true,
+  "description": "Node scraper for johnlewis.com (Chrome for Testing, brands → products)",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "puppeteer-core": "^24.43.1"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "seed-sample": "cp urls.sample.json urls.json && echo 'seeded home + brands'",
+    "probe": "USE_PROXY=0 HEADLESS=0 node scripts/probe_structure.js",
+    "test-parse": "node scripts/test_parse.js",
+    "start-server": "PORT=5056 node server.js",
+    "start-pp": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=1 THREADS=10 node puppeteer_worker.js",
+    "start-pp-visible": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=0 THREADS=1 node puppeteer_worker.js",
+    "export-jsonl": "OUT=johnlewis.jsonl node export_jsonl.js",
+    "export-csv": "OUT=johnlewis.csv node export_csv.js",
+    "status": "curl -s http://127.0.0.1:5056/status; echo"
+  }
+}

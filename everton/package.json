@@ -1,0 +1,23 @@
+{
+  "name": "everton-scraper",
+  "private": true,
+  "description": "Node scraper for store.evertonfc.com (Puppeteer + ProxyRack GB, Bueromarkt/Autodoc-style)",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "https-proxy-agent": "^5.0.1",
+    "puppeteer-core": "^24.43.1"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "seed-sample": "cp urls.sample.json urls.json && echo 'using sample start URLs (home + listings)'",
+    "start-server": "node server.js",
+    "start-pp": "USE_PROXY=1 HEADLESS=1 THREADS=4 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-direct": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=1 THREADS=4 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-visible": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=0 THREADS=2 BLOCK_TYPES= DELAY_MS=400 node puppeteer_worker.js",
+    "start-pp-fast": "USE_PROXY=1 HEADLESS=1 THREADS=4 PAGE_CONCURRENCY=2 BLOCK_TYPES=image,font DELAY_MS=200 node puppeteer_worker.js",
+    "export-jsonl": "node export_jsonl.js",
+    "export-csv": "node export_csv.js",
+    "test-parse": "node scripts/test_parse.js"
+  }
+}

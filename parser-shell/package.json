@@ -1,0 +1,17 @@
+{
+  "name": "parser-shell",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Visual shell that starts the Node parsers in this folder the same way a Terminal window does",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "ssh2": "^1.16.0"
+  }
+}

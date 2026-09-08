@@ -1,0 +1,25 @@
+{
+  "name": "google-shopping-scraper",
+  "private": true,
+  "description": "Node scraper for Google Shopping cards (Chrome for Testing, US locale)",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "puppeteer-core": "^24.43.1"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "test": "node scripts/test_all.js",
+    "seed": "node scripts/seed_from_csv.js",
+    "seed-sample": "node scripts/seed_from_csv.js --sample",
+    "seed-search-one": "node scripts/seed_from_csv.js --sample --search --one",
+    "check-live": "node scripts/check_live_results.js",
+    "probe": "STRICT_US=0 USE_PROXY=0 node scripts/probe_shopping.js",
+    "check-locale": "node scripts/check_locale.js",
+    "test-parse": "node scripts/test_parse.js",
+    "start-server": "PORT=5057 node server.js",
+    "start-pp": "USE_PROXY=0 HEADLESS=0 HIDE_CHROME=1 THREADS=1 node puppeteer_worker.js",
+    "export-jsonl": "OUT=google-shopping.jsonl node export_jsonl.js",
+    "export-csv": "OUT=google-shopping.csv node export_csv.js",
+    "status": "curl -s http://127.0.0.1:5057/status; echo"
+  }
+}

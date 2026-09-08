@@ -1,0 +1,15 @@
+node_modules/
+data/
+logs/
+archive/
+.cache/
+chrome_profile/
+.env
+urls.json
+*.csv
+!test-cards.csv
+*.jsonl
+*.log
+.DS_Store
+probe-out/
+locale-check.txt

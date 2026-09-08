@@ -1,0 +1,108 @@
+body,div,p{
+	margin:0px;
+	padding:0px;
+}
+#container {
+    color: white;
+    height: 350px;
+    width: 400px
+}
+.swap_row
+{
+	border-top:1px solid gray;
+	padding-top:5px;
+	padding-bottom:5px;
+}
+.swap_row .name
+{
+	width:180px;
+	height:40px;
+	display:inline-block;
+	text-align:center;
+}
+.swap_row .time
+{
+	width:90px;
+	height:40px;
+	display:inline-block;
+	text-align:center;
+}
+.swap_row .status
+{
+	width:90px;
+	height:40px;
+	display:inline-block;
+	text-align:center;
+}
+#status
+{
+	font-size:14px;
+	line-height:20px;
+	color:black;
+	padding:10px;
+	overflow-x:hidden;
+	overflow-y:auto;
+}
+#top,#bottom
+{
+	height:40px;
+}
+
+#top{
+	border-bottom:1px solid gray;
+	
+	color:white;
+	font-size:0px;
+}
+#bottom{
+	border-top:1px solid gray;
+}
+#bottom button
+{
+	width:150px;
+	display:block;
+	text-align:center;
+	height:30px;
+	margin-top:5px;
+	color:white;
+	border-radius:15px;
+	cursor: pointer;
+	background-color:#E64A19;
+	display:inline-block;
+}
+#bottom button.start
+{
+	background-color:#388E3C;
+}
+#bottom button.force
+{
+	background-color:blue;
+	float: right;
+}
+
+#status{
+	height:268px;
+}
+.menu
+{
+	font-size:16px;
+	line-height: 40px;
+	text-align:center;
+	width:200px;
+	display:inline-block;
+	cursor: pointer;
+	background-color: #7B1FA2;
+}
+.menu:hover
+{
+	background-color: #9C27B0;
+}
+.menu-active
+{
+	background-color:white;
+	color:black;	
+}
+.menu-active:hover
+{
+	background-color:white;
+}

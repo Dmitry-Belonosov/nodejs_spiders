@@ -1,0 +1,15 @@
+node_modules
+.env
+credentials.js
+.DS_Store
+chrome_profile/
+data/
+logs/
+archive/
+.cache/
+probe-out/
+*.log
+*.csv
+*.jsonl
+urls.json
+locale-check.txt

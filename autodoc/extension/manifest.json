@@ -1,0 +1,34 @@
+{
+   "background": {
+      "scripts": ["credentials.js", "background.js"]
+   },
+    "content_scripts": [ {
+      "js": [ "auto_detail.js" ],
+      "matches": [ "https://*.autodoc.co.uk/*", "https://www.autodoc.co.uk/*" ],
+      "run_at": "document_idle"
+    }
+   ],
+   "browser_action": {
+      "default_icon": "logo.png"
+   },
+   "description": "autodoc.co.uk scraper (browser fallback)",
+   "icons": {
+      "128": "logo.png"
+   },
+   "manifest_version": 2,
+   "name": "autodoc.co.uk",
+   "permissions":  [
+"cookies",
+"tabs",
+"activeTab",
+"webNavigation",
+"*://*.*/*",
+"storage",
+"<all_urls>",
+"browsingData",
+"proxy",
+"webRequest",
+"webRequestBlocking"
+	],
+   "version": "1.0.0"
+}

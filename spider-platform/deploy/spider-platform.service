@@ -1,0 +1,36 @@
+[Unit]
+Description=Spider Platform (Node.js spider scheduler)
+Documentation=file:/opt/spider-platform/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=spiders
+Group=spiders
+WorkingDirectory=/opt/spider-platform
+
+# Configuration is read from /opt/spider-platform/.env by the application
+# itself, so no EnvironmentFile is needed here.
+ExecStart=/usr/bin/node server.js
+
+Restart=always
+RestartSec=5
+
+# SIGTERM reaches the platform, which stops its spiders before exiting;
+# anything still alive afterwards is killed.
+KillMode=mixed
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=spider-platform
+
+LimitNOFILE=65535
+# Chrome needs a real /tmp and shared memory.
+PrivateTmp=false
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

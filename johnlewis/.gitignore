@@ -1,0 +1,12 @@
+node_modules/
+data/
+logs/
+archive/
+.cache/
+chrome_profile/
+.env
+urls.json
+*.csv
+*.jsonl
+*.log
+.DS_Store
