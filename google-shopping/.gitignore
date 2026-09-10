@@ -13,3 +13,5 @@ urls.json
 .DS_Store
 probe-out/
 locale-check.txt
+transfer-pack/
+google-shopping-transfer-*.zip

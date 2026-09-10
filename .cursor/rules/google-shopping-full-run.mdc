@@ -1,0 +1,15 @@
+---
+description: Babysit Google Shopping full crawl — Chrome for Testing, recaptcha, VPN, pauses. Apply when running google-shopping, solving captchas, or watching a full 50-card progon.
+globs: google-shopping/**
+alwaysApply: false
+---
+
+# Google Shopping full-run
+
+When the user asks to launch or watch this spider, follow the skill `.cursor/skills/google-shopping-full-run/SKILL.md`. Do not start until they say to run.
+
+- 1 window × 1 tab, headed Chrome for Testing, `USE_PROXY=0`.
+- See the screen: `/tmp/google-shopping-captcha/visible.png` plus a desktop shot for the VPN app.
+- Captcha: checkbox → tiles that match **this** prompt → wait 5 seconds → confirm OK → then Verify. Never reuse old indices.
+- VPN must stay Connected (US for a trusted full run). If the process is stuck, reconnect VPN, then refresh Chrome. Do not kill Chrome during a live grid.
+- Pause between products (`DELAY_MS=5000` + extra idle after captcha / every 10 cards) so Google does not block.
