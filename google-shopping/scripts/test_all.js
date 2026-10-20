@@ -11,6 +11,7 @@ const tests = [
   'test_chrome.js',
   'test_locale.js',
   'test_recaptcha.js',
+  'test_llm_tile_picker.js',
 ];
 
 let failed = 0;

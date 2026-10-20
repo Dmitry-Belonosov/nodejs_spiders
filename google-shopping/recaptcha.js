@@ -12,6 +12,8 @@ const DUMP_DIR = process.env.CAPTCHA_DUMP_DIR || '/tmp/google-shopping-captcha';
 const MAX_ROUNDS = parseInt(process.env.CAPTCHA_MAX_ROUNDS || '4', 10);
 const SOLUTION_WAIT_MS = parseInt(process.env.CAPTCHA_WAIT_MS || String(3 * 60 * 1000), 10);
 const GIVE_UP_MS = parseInt(process.env.CAPTCHA_GIVE_UP_MS || String(8 * 60 * 1000), 10);
+const RECHECK_PASSES = parseInt(process.env.CAPTCHA_RECHECK_PASSES || '6', 10);
+const RECHECK_FADE_MS = parseInt(process.env.CAPTCHA_RECHECK_FADE_MS || '4500', 10);
 
 let solving = false;
 let solveChain = Promise.resolve();
@@ -192,6 +194,48 @@ async function dumpChallenge(page, challenge, tab, round) {
   return meta;
 }
 
+/** "Click verify once there are none left": clicked tiles are replaced by new images. */
+function isDynamicPrompt(prompt) {
+  return /none left/i.test(String(prompt || ''));
+}
+
+/** Screenshot only these tile positions (after replacement images faded in). */
+async function dumpTiles(challenge, positions) {
+  const tiles = await tileHandles(challenge);
+  const tilePaths = [];
+  const kept = [];
+  for (const i of positions) {
+    if (!tiles[i]) continue;
+    const p = path.join(DUMP_DIR, 'tiles', `recheck-${i}.png`);
+    try {
+      await tiles[i].screenshot({ path: p });
+      tilePaths.push(p);
+      kept.push(i);
+    } catch (e) {}
+  }
+  return { tilePaths, positions: kept };
+}
+
+/**
+ * Dynamic grids: after clicking, re-check the replaced tiles until the picker
+ * finds no more matches (max RECHECK_PASSES). Empty answer = "none left", done.
+ */
+async function recheckNewTiles(page, challenge, meta, clicked, log) {
+  let positions = clicked;
+  for (let pass = 1; pass <= RECHECK_PASSES && positions.length && tilePicker; pass += 1) {
+    await delay(RECHECK_FADE_MS);
+    const { tilePaths, positions: kept } = await dumpTiles(challenge, positions);
+    if (!tilePaths.length) return;
+    await dumpVisible(page, 'visible.png');
+    const sub = await tilePicker({ ...meta, tilePaths, tileCount: tilePaths.length, recheck: true, positions: kept });
+    const next = (Array.isArray(sub) ? sub : []).map((n) => kept[parseInt(n, 10)]).filter((n) => n != null);
+    log(`recaptcha: recheck pass ${pass} of new tiles [${kept.join(',')}] → [${next.join(',')}]`);
+    if (!next.length) return;
+    await clickTiles(page, challenge, next, log);
+    positions = next;
+  }
+}
+
 async function waitForIndices(meta, log) {
   if (tilePicker) {
     const picked = await tilePicker(meta);
@@ -312,7 +356,11 @@ async function solveOnePage(page, { tab = 0, log = console.log, timeout = GIVE_U
     const indices = await waitForIndices(meta, log);
     if (!indices.length) return false;
     await clickTiles(page, challenge, indices, log);
-    await delay(600);
+    if (isDynamicPrompt(meta.prompt)) await recheckNewTiles(page, challenge, meta, indices, log);
+    await dumpVisible(page, 'visible.png');
+    log('recaptcha: waiting 5s after tiles before Verify');
+    await delay(5000);
+    await dumpVisible(page, 'visible.png');
     await clickVerify(page, challenge, log);
     await delay(2500);
   }
@@ -336,4 +384,5 @@ module.exports = {
   withCaptchaLock,
   isCaptchaSolving,
   setRecaptchaTilePicker,
+  isDynamicPrompt,
 };

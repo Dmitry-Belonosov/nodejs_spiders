@@ -25,7 +25,14 @@ const { parseShoppingPage, looksLikeBlocked, looksLikeConsent, extractDomChunksF
 const { proveCard, competitorOffers, pickBestCard } = require('./proof');
 const { resolveUsExit, confirmCountryInPage, isUnitedStates, envFlag } = require('./locale');
 const { shoppingSearchUrl } = require('./query');
-const { pageLooksLikeRecaptcha, solveRecaptchaIfPresent, isCaptchaSolving } = require('./recaptcha');
+const { pageLooksLikeRecaptcha, solveRecaptchaIfPresent, isCaptchaSolving, setRecaptchaTilePicker } = require('./recaptcha');
+const { createLlmTilePicker } = require('./llm_tile_picker');
+const shell = require('./shell_client');
+
+// Started by Scraper Shell 2 → its captcha service (model + human in the UI);
+// standalone with LLM_CAPTCHA=1 → local model directly; else solution.json.
+if (shell.enabled) setRecaptchaTilePicker(shell.recaptchaPicker);
+else if (envFlag('LLM_CAPTCHA', false)) setRecaptchaTilePicker(createLlmTilePicker());
 
 const SERVER_BASE = process.env.SERVER || 'http://127.0.0.1:5057';
 const WINDOW_INDEX = parseInt(process.env.WINDOW_INDEX || '0', 10);
@@ -373,23 +380,47 @@ async function openLikeUser(page, pageUrl) {
   }
 }
 
+/**
+ * A solved captcha redirects /sorry/ → the target. Reading the page too early
+ * saw /sorry/ and wiped the profile although the captcha was fine. Wait for the
+ * redirect; if the page still looks blocked, open the target once more.
+ */
+async function settleAfterCaptcha(page, pageUrl) {
+  const deadline = Date.now() + 15000;
+  while (Date.now() < deadline && /\/sorry\//i.test(page.url())) await delay(500);
+  await delay(2000);
+  const html = await page.content().catch(() => '');
+  if (!looksLikeBlocked(html, page.url())) return;
+  console.log('captcha solved but page still looks blocked — reopening target once');
+  await openLikeUser(page, pageUrl);
+  await delay(2500);
+  await dismissConsent(page);
+}
+
 async function scrapeUrl(page, pageUrl, xhrBucket, extra = {}) {
   xhrBucket.length = 0;
   focusTick();
   await openLikeUser(page, pageUrl);
   await delay(2500);
   await dismissConsent(page);
-  if (await pageLooksLikeRecaptcha(page)) {
+  // Solved captcha → keep scraping in the same Chrome. Google may chain a
+  // second captcha; solve that too. Only a block with no captcha to solve
+  // (or an unsolved one) goes to the blocked/refresh path.
+  for (let attempt = 1; attempt <= 3 && (await pageLooksLikeRecaptcha(page)); attempt += 1) {
     pauseFocusGuard = true;
+    let ok = false;
     try {
-      const ok = await solveRecaptchaIfPresent(page, { tab: extra.tab });
-      if (!ok && looksLikeBlocked(await page.content().catch(() => ''), page.url())) {
-        throw Object.assign(new Error('blocked'), { blocked: true });
-      }
+      ok = await solveRecaptchaIfPresent(page, { tab: extra.tab });
+      if (ok) await settleAfterCaptcha(page, pageUrl);
     } finally {
       pauseFocusGuard = false;
     }
+    if (!ok) break;
+    if (attempt > 1) console.log(`captcha #${attempt} solved on this page — continuing`);
     await delay(1500);
+  }
+  if (looksLikeBlocked(await page.content().catch(() => ''), page.url())) {
+    throw Object.assign(new Error('blocked'), { blocked: true });
   }
   await expandOfferList(page);
   await delay(1500);

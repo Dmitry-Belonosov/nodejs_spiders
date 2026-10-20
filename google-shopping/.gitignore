@@ -15,3 +15,4 @@ probe-out/
 locale-check.txt
 transfer-pack/
 google-shopping-transfer-*.zip
+data.bak-*/

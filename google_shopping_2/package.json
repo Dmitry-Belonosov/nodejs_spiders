@@ -1,0 +1,13 @@
+{
+  "name": "google-shopping-2",
+  "private": true,
+  "description": "Google Shopping: search target → match products (text + image LLM) → collect sellers/ids from the panel",
+  "dependencies": {
+    "puppeteer-core": "^24.43.1"
+  },
+  "scripts": {
+    "start": "node run.js",
+    "probe": "node scripts/probe.js",
+    "test": "node scripts/test_all.js"
+  }
+}

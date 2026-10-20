@@ -1,0 +1,11 @@
+{
+  "env": {
+    "HEADLESS": "0",
+    "HIDE_CHROME": "0",
+    "DELAY_MS": "5000",
+    "CAPTCHA_WAIT_MS": "300000",
+    "COMPLETE_STABLE_POLLS": "3"
+  },
+  "profileGlobs": ["/tmp/google-shopping-pp-profile-*"],
+  "statusPath": "/status"
+}

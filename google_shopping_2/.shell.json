@@ -1,0 +1,5 @@
+{
+  "env": { "HEADLESS": "0", "MAX_MATCHES": "5", "USE_IMAGES": "1" },
+  "profileGlobs": ["/tmp/gs2-profile"],
+  "statusPath": "/status"
+}
