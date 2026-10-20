@@ -14,6 +14,7 @@
  * Output (out/): matches.csv, offers.csv, domains.csv, images/, targets/<id>.json
  * Resume: finished targets are skipped (delete out/targets to start over).
  *
+ * EXPORT_ONLY=1 rebuilds the CSVs from out/targets without opening Chrome.
  * Env: INPUT=input.csv  LIMIT=0  MAX_MATCHES=5  USE_IMAGES=1  HEADLESS=0  PORT (from shell)
  */
 // Captcha defaults, set before lib/recaptcha.js reads them at load time:
@@ -330,7 +331,13 @@ async function processTarget(t) {
   for (const c of matched) {
     const before = new Set(await browser.pages());
     const searchUrl = page.url();
-    if (!(await google.openCard(page, c.idx))) {
+    let opened = await google.openCard(page, c.idx);
+    if (!opened) {
+      await google.closePanel(page);
+      await google.jitter(800, 1500);
+      opened = await google.openCard(page, c.idx);
+    }
+    if (!opened) {
       // Some single-shop cards open the shop itself instead of a panel.
       const opened = (await browser.pages()).find((p) => !before.has(p));
       let shopUrl = '';
@@ -380,6 +387,12 @@ async function main() {
       .listen(parseInt(process.env.PORT, 10), '127.0.0.1');
   }
 
+  if (process.env.EXPORT_ONLY === '1') {
+    const c = writeOutputs(targets);
+    log(`export only: ${c.matches} card rows, ${c.offers} offers, ${c.domains} domains → ${OUT}`);
+    return;
+  }
+  const blockedIds = new Set();
   log(`${targets.length} target(s), ${status().progress} already done, input ${path.basename(INPUT)}`);
   await openBrowser();
 
@@ -403,7 +416,12 @@ async function main() {
         }
       }
     }
-    if (!result) result = { status: 'blocked', cards: [], panels: [] };
+    if (!result) {
+      // not saved as done: the next run (after a VPN change) retries it
+      blockedIds.add(t.id);
+      log(`t${t.id} → blocked, will retry on the next run`);
+      continue;
+    }
     fs.writeFileSync(doneFile(t), JSON.stringify({ target: t, at: new Date().toISOString(), ...result }, null, 1));
     const s = status();
     log(`t${t.id} → ${result.status} | progress ${s.progress}/${s.total}`);
@@ -412,6 +430,7 @@ async function main() {
 
   const counts = writeOutputs(targets);
   log(`done: ${counts.matches} card rows, ${counts.offers} offers, ${counts.domains} domains → ${OUT}`);
+  if (blockedIds.size) log(`${blockedIds.size} target(s) blocked and not saved — run again to retry: ${[...blockedIds].join(', ')}`);
   await browser.close().catch(() => {});
   process.exit(status().progress ? 0 : 1);
 }
