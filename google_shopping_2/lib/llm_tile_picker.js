@@ -129,7 +129,7 @@ function createLlmTilePicker({ log = console.log, ask = askTile } = {}) {
       `llm-captcha: "${target}" ${meta.tilePaths.length} tiles → [${picked.join(',')}] ` +
         `in ${((Date.now() - started) / 1000).toFixed(1)}s`
     );
-    if (!picked.length && !meta.recheck && !meta.emptyOk) log('llm-captcha: model found nothing — handing to human');
+    if (!picked.length && !meta.recheck && !meta.emptyOk) log(`llm-captcha: model found nothing${process.env.CAPTCHA_WAIT_MS === '0' ? ' — asking for a new grid' : ' — handing to human'}`);
     return picked;
   };
 }

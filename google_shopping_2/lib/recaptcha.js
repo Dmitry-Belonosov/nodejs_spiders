@@ -242,6 +242,7 @@ async function waitForIndices(meta, log) {
     if (Array.isArray(picked) && picked.length) return picked.map((n) => parseInt(n, 10));
     if (Array.isArray(picked) && /click skip/i.test(meta.prompt)) return [];
   }
+  if (SOLUTION_WAIT_MS <= 0) return []; // nobody watches solution.json (standalone run)
   log(
     `recaptcha: tab=${meta.tab} round=${meta.round} "${meta.prompt}" — ${meta.tileCount} tiles. ` +
       `Look at ${path.join(DUMP_DIR, 'visible.png')} then write ${solutionPath()} {"indices":[...]}`

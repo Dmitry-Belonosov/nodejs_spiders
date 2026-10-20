@@ -35,6 +35,7 @@ const google = require('./lib/google');
 const { matchCards } = require('./lib/match');
 const { extractIds } = require('./lib/ids');
 const { cleanSpecs, specColumns, SPEC_COLUMNS } = require('./lib/specs');
+const stats = require('./lib/stats');
 
 const ROOT = __dirname;
 const OUT = path.join(ROOT, 'out');
@@ -46,9 +47,10 @@ const HEADLESS = process.env.HEADLESS === '1';
 const PROFILE = process.env.PROFILE || '/tmp/gs2-profile';
 const BLOCK_WAIT_MS = parseInt(process.env.BLOCK_WAIT_MS || '60000', 10);
 
-setRecaptchaTilePicker(shell.enabled ? shell.recaptchaPicker : createLlmTilePicker());
+setRecaptchaTilePicker(shell.enabled ? shell.recaptchaPicker : createLlmTilePicker({ log: (...a) => log(`  ${a.join(' ')}`) }));
 
-const log = (...a) => console.log(`[gs2 ${new Date().toISOString().slice(11, 19)}]`, ...a);
+// local time HH:MM:SS (the shell log shows the same clock as the Mac)
+const log = (...a) => console.log(`[gs2 ${new Date().toTimeString().slice(0, 8)}]`, ...a);
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- input / output ----------
@@ -303,7 +305,7 @@ async function processTarget(t) {
   let match = null;
   for (const q of queriesFor(t)) {
     query = q;
-    log(`t${t.id} search "${q}"`);
+    log(`  search "${q}"`);
     await google.openSearch(page, q, log);
     cards = await google.readCards(page);
     if (!cards.length) continue;
@@ -325,7 +327,7 @@ async function processTarget(t) {
     return { ...card, score: s.score, matched: s.matched, why: s.why, gates: s.gates, reasons: s.reasons, imageFile };
   });
   const matched = cardRows.filter((c) => c.matched).slice(0, MAX_MATCHES);
-  log(`t${t.id} ${cards.length} cards, ${matched.length} matched (ref image: ${refFrom || 'none'})`);
+  log(`  ${cards.length} cards on the page, ${matched.length} matched (reference image: ${refFrom || 'none'})`);
 
   const panels = [];
   for (const c of matched) {
@@ -351,23 +353,73 @@ async function processTarget(t) {
       }
       if (shopUrl && /^https?:/.test(shopUrl)) {
         panels.push({ cardIdx: c.idx, score: c.score, imageFile: c.imageFile, title: c.title, specs: {}, image: '', offers: [{ store: c.store, price: c.price, oldPrice: c.oldPrice, title: c.title, stock: '', url: shopUrl, shopUrl: await resolveShopUrl(shopUrl) }] });
-        log(`t${t.id} card ${c.idx}: opened shop directly → ${shopUrl.slice(0, 80)}`);
+        log(`  card ${c.idx}: opened the shop directly → ${shopUrl.slice(0, 80)}`);
       } else {
-        log(`t${t.id} card ${c.idx}: panel did not open`);
+        log(`  card ${c.idx}: panel did not open`);
       }
       continue;
     }
     const panel = await google.readPanel(page);
-    if (!panel || !panel.offers.length) log(`t${t.id} card ${c.idx}: panel opened but no sellers read`);
+    if (!panel || !panel.offers.length) log(`  card ${c.idx}: panel opened but no sellers read`);
     if (panel) {
       for (const o of panel.offers) o.shopUrl = await resolveShopUrl(o.direct || o.url);
       panels.push({ cardIdx: c.idx, score: c.score, imageFile: c.imageFile, ...panel });
-      log(`t${t.id} card ${c.idx}: ${panel.offers.length} offer(s) ${panel.offers.map((o) => `${o.store} $${o.price}`).join(', ').slice(0, 150)}`);
+      log(`  card ${c.idx}: panel read, ${panel.offers.length} seller(s)`);
     }
     await google.closePanel(page);
     await google.jitter(800, 1800);
   }
   return { status: matched.length ? 'ok' : 'no_match', query, cards: cardRows, panels };
+}
+
+// ---------- product log ----------
+
+const money = (v) => (v || v === 0 ? `$${v}` : '-');
+
+/** Readable block per product: matches, near-misses, every extracted seller. */
+function logProduct(t, r, seconds, seenDomains) {
+  const matched = r.cards.filter((c) => c.matched);
+  const sellers = [];
+  const seen = new Set();
+  for (const p of r.panels) {
+    for (const o of p.offers) {
+      const domain = domainOf(o.shopUrl || o.direct || o.url);
+      if (seen.has(domain || o.store)) continue;
+      seen.add(domain || o.store);
+      sellers.push({ ...o, domain });
+    }
+  }
+  const newSites = sellers.filter((o) => o.domain && !seenDomains.has(o.domain));
+  for (const o of sellers) if (o.domain) seenDomains.add(o.domain);
+  const markets = sellers.filter((o) => marketplaceOf(o.domain, o.store).isMarketplace).length;
+  const flagged = sellers.filter((o) => priceFlag(o.price, t.price)).length;
+
+  log(`  RESULT ${r.status.toUpperCase()} in ${Math.round(seconds)}s · ${matched.length} matched card(s) · ${sellers.length} seller(s) on ${new Set(sellers.map((o) => o.domain).filter(Boolean)).size} website(s) (${newSites.length} new) · ${markets} marketplace · ${flagged} price-flagged`);
+  for (const c of matched) {
+    log(`  ✓ MATCH [${c.why}] ${c.title.slice(0, 70)} · ${money(c.price)} · ${c.store.slice(0, 30)}${c.catalogid ? ` · catalogid ${c.catalogid}` : ''}`);
+  }
+  if (!matched.length) {
+    for (const c of r.cards.slice(0, 3)) log(`  ✗ near-miss [${c.score}] ${c.title.slice(0, 60)} · ${money(c.price)} — ${c.why || c.reasons.slice(-2).join(', ')}`);
+  }
+  const p0 = r.panels[0];
+  if (p0) {
+    const specs = cleanSpecs(p0.specs);
+    const ids = extractIds(t, { specs, titles: [p0.title, matched[0] && matched[0].title].filter(Boolean) });
+    const sc = specColumns(specs);
+    const facts = [
+      `brand ${specs.Brand || t.brand || '-'}`,
+      `mpn ${ids.mpn || t.mpn || '-'}`,
+      `gtin ${ids.gtin || t.gtin || '-'}`,
+      ...Object.entries(sc).filter(([, v]) => v).slice(0, 5).map(([k, v]) => `${k} ${String(v).slice(0, 30)}`),
+    ];
+    log(`  PRODUCT ${(matched[0] ? matched[0].title : p0.title).slice(0, 80)} · ${facts.join(' · ')}`);
+  }
+  for (const o of sellers) {
+    const flag = priceFlag(o.price, t.price);
+    const mk = marketplaceOf(o.domain, o.store).isMarketplace ? ' [marketplace]' : '';
+    log(`    • ${o.store.slice(0, 28).padEnd(28)} ${money(o.price).padStart(10)}${o.oldPrice ? ` (was ${money(o.oldPrice)})` : ''} ${o.domain || '?'} · ${o.stock}${mk}${flag ? ` ⚠ ${flag}` : ''}`);
+  }
+  stats.addProduct({ id: t.id, mpn: t.mpn, name: t.name, status: r.status, seconds: Math.round(seconds), cards: r.cards.length, matched: matched.length, sellers: sellers.length, domains: sellers.map((o) => o.domain).filter(Boolean), query: r.query });
 }
 
 // ---------- main ----------
@@ -394,24 +446,29 @@ async function main() {
   }
   const blockedIds = new Set();
   log(`${targets.length} target(s), ${status().progress} already done, input ${path.basename(INPUT)}`);
+  const seenDomains = new Set();
+  let n = 0;
   await openBrowser();
 
   for (const t of targets) {
     if (fs.existsSync(doneFile(t))) continue;
+    n += 1;
+    log(`── [${status().progress + 1}/${targets.length}] ${t.brand} ${t.mpn} · ${t.name.slice(0, 70)} · ${money(t.price)}`);
+    const t0 = Date.now();
     let result = null;
     for (let attempt = 1; attempt <= 3 && !result; attempt += 1) {
       try {
         result = await processTarget(t);
       } catch (e) {
         if (e.blocked) {
-          log(`t${t.id} BLOCKED (attempt ${attempt}) — waiting ${BLOCK_WAIT_MS / 1000}s`);
+          log(`  BLOCKED (attempt ${attempt}/3) — waiting ${BLOCK_WAIT_MS / 1000}s`);
           shell.report('blocked', { line: `google-shopping-2 t${t.id} blocked without captcha` });
           await delay(BLOCK_WAIT_MS);
         } else if (BROWSER_DEAD.test(e.message)) {
-          log(`t${t.id} browser error (${e.message.slice(0, 60)}) — reopening Chrome`);
+          log(`  browser error (${e.message.slice(0, 60)}) — reopening Chrome`);
           await openBrowser();
         } else {
-          log(`t${t.id} error: ${e.message}`);
+          log(`  ERROR ${e.message}`);
           result = { status: 'error', error: e.message, cards: [], panels: [] };
         }
       }
@@ -419,17 +476,20 @@ async function main() {
     if (!result) {
       // not saved as done: the next run (after a VPN change) retries it
       blockedIds.add(t.id);
-      log(`t${t.id} → blocked, will retry on the next run`);
+      log(`  RESULT BLOCKED — not saved, will retry on the next run`);
+      stats.addProduct({ id: t.id, mpn: t.mpn, name: t.name, status: 'blocked', seconds: Math.round((Date.now() - t0) / 1000), cards: 0, matched: 0, sellers: 0, domains: [] });
       continue;
     }
     fs.writeFileSync(doneFile(t), JSON.stringify({ target: t, at: new Date().toISOString(), ...result }, null, 1));
-    const s = status();
-    log(`t${t.id} → ${result.status} | progress ${s.progress}/${s.total}`);
+    logProduct(t, result, (Date.now() - t0) / 1000, seenDomains);
+    if (n % 5 === 0) stats.printTotals(log, targets.length - (status().progress - n));
     await google.jitter(1000, 3000);
   }
 
   const counts = writeOutputs(targets);
-  log(`done: ${counts.matches} card rows, ${counts.offers} offers, ${counts.domains} domains → ${OUT}`);
+  stats.printTotals(log, n, 'FINAL (this run)');
+  stats.writeReport(path.join(OUT, 'run_report.json'), n);
+  log(`files: ${counts.offers} sellers in offers.csv, ${counts.domains} shop domains in domains.csv, report out/run_report.json → ${OUT}`);
   if (blockedIds.size) log(`${blockedIds.size} target(s) blocked and not saved — run again to retry: ${[...blockedIds].join(', ')}`);
   await browser.close().catch(() => {});
   process.exit(status().progress ? 0 : 1);

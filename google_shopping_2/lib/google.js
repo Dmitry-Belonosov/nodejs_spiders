@@ -4,6 +4,7 @@
  * jsname=QS8Cxb cards) rather than on obfuscated class names.
  */
 const { pageLooksLikeRecaptcha, solveRecaptchaIfPresent } = require('./recaptcha');
+const stats = require('./stats');
 
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 const jitter = (min, max) => delay(min + Math.random() * (max - min));
@@ -40,12 +41,24 @@ async function dismissConsent(page) {
 /** Captcha → solve and keep going; blocked without a solvable captcha → BlockedError. */
 async function passGate(page, log) {
   for (let i = 1; i <= 3 && (await pageLooksLikeRecaptcha(page)); i += 1) {
-    log(`captcha on ${page.url().slice(0, 60)} (#${i})`);
-    const ok = await solveRecaptchaIfPresent(page, { tab: 0, log });
-    if (!ok) break;
+    log(`captcha on ${page.url().slice(0, 60)} (#${i}) — solving`);
+    const track = stats.captchaTracker(log);
+    let ok = false;
+    try {
+      ok = await solveRecaptchaIfPresent(page, { tab: 0, log: track.log });
+    } catch (e) {
+      track.finish(false, e.message.slice(0, 60));
+      throw e;
+    }
+    if (!ok) {
+      track.finish(false, 'gave up after max rounds');
+      break;
+    }
     const deadline = Date.now() + 15000;
     while (Date.now() < deadline && /\/sorry\//.test(page.url())) await delay(500);
     await delay(1500);
+    const still = await isBlockedPage(page);
+    track.finish(!still, still ? 'Google still shows /sorry/ after Verify' : '');
   }
   if (await isBlockedPage(page)) throw new BlockedError('blocked: Google /sorry/ page');
 }
@@ -210,7 +223,8 @@ function readPanelInPage() {
     const lines = a.innerText.split('\n').map((s) => s.trim()).filter(Boolean);
     const pi = lines.findIndex((l) => PRICE.test(l));
     if (pi < 0) continue;
-    const store = lines.slice(0, pi).find((l) => !/^Best price$/i.test(l)) || '';
+    const BADGE = /^(Best price|Most popular|Top quality store|Low price|Popular|Sponsored|Ad|Free delivery|Fast delivery|On sale|\d+% off)$/i;
+    const store = lines.slice(0, pi).find((l) => !BADGE.test(l)) || '';
     if (!store || seen.has(store)) continue;
     seen.add(store);
     const rest = lines.slice(pi + 1);
